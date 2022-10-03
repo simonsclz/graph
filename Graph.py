@@ -88,6 +88,7 @@ class Graph:
         self.__dfs_content = dict()
         self.__dfs_time = 0
         self.__count_nodes = 0
+        self.__current_fw_table = None
 
     def find_node(self, node_number):
         for node in self.__nodes:
@@ -98,6 +99,7 @@ class Graph:
     def add_node(self, name):
         self.__nodes.append(Node(name))
         self.__count_nodes += 1
+        self.__current_fw_table = self.__floyd_warshall()
 
     def unmark_all_nodes(self):
         for node in self.__nodes:
@@ -111,6 +113,7 @@ class Graph:
                 first_node.add_adjacent_node(second_node, costs)
                 if not directed:
                     second_node.add_adjacent_node(first_node, costs)
+                self.__current_fw_table = self.__floyd_warshall()
                 return True
         return False
 
@@ -126,6 +129,7 @@ class Graph:
                         self.__count_nodes -= 1
                         break
                 node.set_adjacent_nodes(edge_buffer)
+            self.__current_fw_table = self.__floyd_warshall()
             return True
         return False
 
@@ -294,7 +298,7 @@ class Graph:
         elif mode == "dij":
             return self.__construct_shortest_path(source_node, target_node, self.__shortest_path(source_node))
         elif mode == "fw":
-            return self.__floyd_warshall()[source_node][target_node]
+            return self.__construct_shortest_path_fw(source_node, target_node, self.__current_fw_table)
         print("Invalid mode. Use 'bf' or 'dij' to select an algorithm.")
         return None
 
@@ -338,11 +342,28 @@ class Graph:
                 break
         return bf_table
 
+    def __construct_shortest_path_fw(self, source_node, target_node, fw_table):
+
+        """
+        Constructs the shortest path between two vertices.
+        @param source_node: The source node's name.
+        @param target_node: The target node's name.
+        @param fw_table:  The final FLoyd-Warshall-table.
+        @return: Returns the costs and the shortest path between the two vertices like [cost, node1, ..., node_n].
+        """
+
+        current_node = source_node
+        path = [fw_table[source_node][target_node][0], current_node]
+        while current_node != target_node:
+            current_node = fw_table[current_node][target_node][1]
+            path.append(current_node)
+        return path
+
     def __construct_fw_table(self):
 
         """
         Constructs the table for the Floyd-Warshall-algorithm.
-        Table is built like {node_name: {node1: cost1, ..., node_n: cost_n}, ...}.
+        Table is built like {node_name: {node1: [cost1, next_1], ..., node_n: [cost_n, next_n]}, ...}.
         Table and sub-tables include all nodes, since Floyd-Warshall is an all-pair-algorithm.
         @return: Returns the table in form of a dictionary.
         """
@@ -352,12 +373,13 @@ class Graph:
             fw_table[node.get_name()] = dict()
             for target_node in self.__nodes:
                 if node.get_name() == target_node.get_name():
-                    fw_table[node.get_name()][node.get_name()] = 0
+                    fw_table[node.get_name()][node.get_name()] = [0, node.get_name()]
                 else:
                     if node.has_adjacent_node(target_node.get_name()):
-                        fw_table[node.get_name()][target_node.get_name()] = node.get_edge_cost(target_node.get_name())
+                        fw_table[node.get_name()][target_node.get_name()] = \
+                            [node.get_edge_cost(target_node.get_name()), target_node.get_name()]
                     else:
-                        fw_table[node.get_name()][target_node.get_name()] = float('inf')
+                        fw_table[node.get_name()][target_node.get_name()] = [float('inf'), None]
         return fw_table
 
     def __floyd_warshall(self):
@@ -371,12 +393,14 @@ class Graph:
         for node_k in self.__nodes:
             for node_i in self.__nodes:
                 for node_j in self.__nodes:
-                    if fw_table[node_i.get_name()][node_j.get_name()] > \
-                            fw_table[node_i.get_name()][node_k.get_name()] + \
-                            fw_table[node_k.get_name()][node_j.get_name()]:
-                        fw_table[node_i.get_name()][node_j.get_name()] = \
-                            fw_table[node_i.get_name()][node_k.get_name()] + \
-                            fw_table[node_k.get_name()][node_j.get_name()]
+                    if fw_table[node_i.get_name()][node_j.get_name()][0] > \
+                            fw_table[node_i.get_name()][node_k.get_name()][0] + \
+                            fw_table[node_k.get_name()][node_j.get_name()][0]:
+                        fw_table[node_i.get_name()][node_j.get_name()][0] = \
+                            fw_table[node_i.get_name()][node_k.get_name()][0] + \
+                            fw_table[node_k.get_name()][node_j.get_name()][0]
+                        fw_table[node_i.get_name()][node_j.get_name()][1] = \
+                            fw_table[node_i.get_name()][node_k.get_name()][1]
         return fw_table
 
 
@@ -397,4 +421,4 @@ if __name__ == "__main__":
     g.set_edge('u', 'v', True, 7)
     g.set_edge('v', 'u', True, 2)
     g.set_edge('w', 'x', True, 3)
-    print(g.get_shortest_path('x', 'v', 'bf'))
+    print(g.get_shortest_path('x', 'v', 'fw'))
