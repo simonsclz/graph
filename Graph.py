@@ -342,7 +342,7 @@ class Graph:
 
         """
         Constructs the table for the Floyd-Warshall-algorithm.
-        Table is built like {node_name: {node1: [cost1, path], ..., node_n: [cost_n, path]}, ...}.
+        Table is built like {node_name: {node1: cost1, ..., node_n: cost_n}, ...}.
         Table and sub-tables include all nodes, since Floyd-Warshall is an all-pair-algorithm.
         @return: Returns the table in form of a dictionary.
         """
