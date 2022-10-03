@@ -41,12 +41,25 @@ class Node:
         return True
 
     def has_adjacent_node(self, node_number):
+
+        """
+        @param node_number: Node name (as a string) that will be checked.
+        @return: Whether the node has an edge leading to the given node or not.
+        """
+
         for node in self.__adjacent_nodes:
             if node[0].get_name() == node_number:
                 return True
         return False
 
     def get_edge_cost(self, target_node):
+
+        """
+        Returns the cost for edge node-target_node.
+        @param target_node: Name of the target node as a string.
+        @return: Cost of edge node-target_node.
+        """
+
         if target_node in self.get_adjacent_nodes_numbers():
             cost = [edge[1] for edge in self.__adjacent_nodes if edge[0].get_name() == target_node][0]
             return cost
@@ -270,15 +283,18 @@ class Graph:
         """
         NOTES: Edges have to be stored like [node, costs], where "node" is an object.
         Calculates the shortest path between start and end using the Dijkstra-/Bellman-Ford-algorithm.
+        Calculates the cost of the shortest path by using the Floyd-Warshall-algorithm.
         @param source_node: The first node of the shortest path. Path starts there. Has to be a string or a number!
         @param target_node: The last node of the shortest path. Path ends here. Has to be a string or a number!
-        @param mode: Use 'bf' or 'dij' to use the Bellman-Ford-/Dijkstra-algorithm.
+        @param mode: Use 'bf' (Bellman-Ford), 'dij' (Dijkstra) or 'fw' (Floyd-Warshall) to choose the algorithm.
         @return: Returns the shortest path according to the calculated Dijkstra-/Bellman-Ford-table as a list.
         """
         if mode == 'bf':
             return self.__construct_shortest_path(source_node, target_node, self.__shortest_path_bf(source_node))
         elif mode == "dij":
             return self.__construct_shortest_path(source_node, target_node, self.__shortest_path(source_node))
+        elif mode == "fw":
+            return self.__floyd_warshall()[source_node][target_node]
         print("Invalid mode. Use 'bf' or 'dij' to select an algorithm.")
         return None
 
@@ -298,7 +314,7 @@ class Graph:
             elif source_node.has_adjacent_node(node.get_name()):
                 bf_table[node.get_name()] = [source_node.get_edge_cost(node.get_name()), source_node.get_name()]
             else:
-                bf_table[node.get_name()] = [float('inf'), None]
+                bf_table[node.get_name()] = [float('inf')]
         return bf_table
 
     def __shortest_path_bf(self, source_node):
@@ -322,25 +338,63 @@ class Graph:
                 break
         return bf_table
 
+    def __construct_fw_table(self):
+
+        """
+        Constructs the table for the Floyd-Warshall-algorithm.
+        Table is built like {node_name: {node1: [cost1, path], ..., node_n: [cost_n, path]}, ...}.
+        Table and sub-tables include all nodes, since Floyd-Warshall is an all-pair-algorithm.
+        @return: Returns the table in form of a dictionary.
+        """
+
+        fw_table = dict()
+        for node in self.__nodes:
+            fw_table[node.get_name()] = dict()
+            for target_node in self.__nodes:
+                if node.get_name() == target_node.get_name():
+                    fw_table[node.get_name()][node.get_name()] = 0
+                else:
+                    if node.has_adjacent_node(target_node.get_name()):
+                        fw_table[node.get_name()][target_node.get_name()] = node.get_edge_cost(target_node.get_name())
+                    else:
+                        fw_table[node.get_name()][target_node.get_name()] = float('inf')
+        return fw_table
+
+    def __floyd_warshall(self):
+
+        """
+        Calculates all shortest paths using Floyd-Warshall-algorithm.
+        @return: Returns the final Floyd-Warshall-table with all shortest paths.
+        """
+
+        fw_table = self.__construct_fw_table()
+        for node_k in self.__nodes:
+            for node_i in self.__nodes:
+                for node_j in self.__nodes:
+                    if fw_table[node_i.get_name()][node_j.get_name()] > \
+                            fw_table[node_i.get_name()][node_k.get_name()] + \
+                            fw_table[node_k.get_name()][node_j.get_name()]:
+                        fw_table[node_i.get_name()][node_j.get_name()] = \
+                            fw_table[node_i.get_name()][node_k.get_name()] + \
+                            fw_table[node_k.get_name()][node_j.get_name()]
+        return fw_table
+
 
 if __name__ == "__main__":
     g = Graph()
-    g.add_node('undershorts')
-    g.add_node('pants')
-    g.add_node('shoes')
-    g.add_node('socks')
-    g.add_node('belt')
-    g.add_node('shirt')
-    g.add_node('tie')
-    g.add_node('jacket')
-    g.add_node('watch')
-    g.set_edge('undershorts', 'pants', True)
-    g.set_edge('undershorts', 'shoes', True)
-    g.set_edge('socks', 'shoes', True)
-    g.set_edge('pants', 'shoes', True)
-    g.set_edge('pants', 'belt', True)
-    g.set_edge('shirt', 'belt', True)
-    g.set_edge('belt', 'jacket', True)
-    g.set_edge('shirt', 'tie', True)
-    g.set_edge('tie', 'jacket', True)
-    print(g.topological_sort())
+    g.add_node('x')
+    g.add_node('y')
+    g.add_node('z')
+    g.add_node('u')
+    g.add_node('v')
+    g.add_node('w')
+    g.set_edge('x', 'y', True, 2)
+    g.set_edge('x', 'w', True, -1)
+    g.set_edge('y', 'x', True, 5)
+    g.set_edge('y', 'z', True, 1)
+    g.set_edge('z', 'u', True, 3)
+    g.set_edge('z', 'w', True, -2)
+    g.set_edge('u', 'v', True, 7)
+    g.set_edge('v', 'u', True, 2)
+    g.set_edge('w', 'x', True, 3)
+    print(g.get_shortest_path('x', 'v', 'bf'))
